@@ -2,22 +2,31 @@
 
 注意：本文件在导入任何向量化/网络库之前被加载（app/embedding.py 首行 import config），
 因此下面设置的环境变量能可靠生效。
+
+部署提示：数据目录与模型目录都可用环境变量覆盖，便于容器化部署：
+    KB_DATA_DIR=/data        数据和索引放持久化卷
+    KB_MODELS_DIR=/data/models   模型缓存放持久化卷，避免每次重启重新下载 1.2GB
 """
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-# ---- 路径 ----
+# ---- 路径（可用环境变量覆盖，便于部署到容器/云平台）----
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = Path(os.getenv("KB_DATA_DIR") or (BASE_DIR / "data"))
 SOURCE_DIR = DATA_DIR / "source"          # 原始文档存放处
 INDEX_DIR = DATA_DIR / "index"            # FAISS 索引 + 分块元数据
-MODELS_DIR = BASE_DIR / "models"          # 本地模型缓存
-LOG_DIR = BASE_DIR / "logs"
+MODELS_DIR = Path(os.getenv("KB_MODELS_DIR") or (BASE_DIR / "models"))  # 模型缓存
+LOG_DIR = Path(os.getenv("KB_LOG_DIR") or (BASE_DIR / "logs"))
 
-for _d in (SOURCE_DIR, INDEX_DIR, MODELS_DIR, LOG_DIR):
-    _d.mkdir(parents=True, exist_ok=True)
+# 注意：MODELS_DIR 不在这里创建。它可能是只读挂载点（平台的只读模型缓存），
+# 提前 mkdir 会抛 PermissionError/OSError 导致服务直接起不来。
+for _d in (SOURCE_DIR, INDEX_DIR, LOG_DIR):
+    try:
+        _d.mkdir(parents=True, exist_ok=True)
+    except OSError as _exc:  # 只读挂载点等情况：不阻断启动，由上层按需报错
+        print(f"[config] 警告：无法创建目录 {_d} ({_exc})，如为只读挂载点可忽略")
 
 
 def _load_dotenv() -> None:
@@ -102,3 +111,14 @@ WEB_PORT = int(os.getenv("KB_PORT", "8000"))
 
 # 模型下载镜像（内网/受限网络可指向私有镜像，如 https://hf-mirror.com）
 HF_ENDPOINT = os.getenv("HF_ENDPOINT", "")
+if HF_ENDPOINT:
+    os.environ.setdefault("HF_ENDPOINT", HF_ENDPOINT)
+
+# HuggingFace 缓存目录也指向 MODELS_DIR，便于整体打包/挂载
+os.environ.setdefault("HF_HOME", str(MODELS_DIR / "hf"))
+
+# 是否处于公开演示部署（HF Spaces 会注入 SPACE_ID）。
+# 用于在页面上显示提示，并提醒访问者自行配置大模型 Key。
+IS_PUBLIC_DEMO = bool(os.getenv("SPACE_ID") or os.getenv("KB_PUBLIC_DEMO"))
+PUBLIC_URL = os.getenv("KB_PUBLIC_URL", "")
+

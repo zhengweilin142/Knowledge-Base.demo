@@ -1,0 +1,19 @@
+# 构建镜像时排除的内容（不影响仓库提交，只影响 docker build 上下文大小）
+.git
+.gitignore
+.gitattributes
+.venv
+models
+logs
+data/index
+docs
+.env
+.env.local
+__pycache__
+*.pyc
+tools/ui_shot.py
+tools/make_samples.py
+tools/make_pdf.py
+README.md
+LICENSE
+启动知识库.bat
