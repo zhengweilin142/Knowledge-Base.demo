@@ -1,0 +1,26 @@
+# 企业知识库 Demo —— 运行依赖
+# 安装：.venv\Scripts\python.exe -m pip install -r requirements.txt
+#
+# 选型说明（每一步都实测过，不是照搬教程）：
+#   * 没有 sentence-transformers / torch —— 会拉入 PyTorch（约2GB磁盘、数GB内存），
+#     本机 7.6G 内存扛不住。向量化改用 fastembed（ONNX Runtime）加载 BGE 中文模型。
+#   * 没有 chromadb —— 1.5.9 的 Rust 内核在本机 Windows 上建库即报
+#     "unable to open database file"；降级到 0.5.x 又需现场编译 chroma-hnswlib。
+#     向量存储改用 FAISS（官方 Windows 预编译 wheel，且存储完全显式）。
+#   * 没有 langchain —— 解析/切分/检索全部是本仓库里的显式代码，便于审计与二次开发。
+
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7
+httpx>=0.27
+python-dotenv>=1.0
+
+# 向量检索与向量化
+faiss-cpu>=1.8
+fastembed>=0.4
+
+# 文档解析
+pypdf>=4.2          # PDF
+python-docx>=1.1    # Word .docx
+openpyxl>=3.1       # Excel .xlsx

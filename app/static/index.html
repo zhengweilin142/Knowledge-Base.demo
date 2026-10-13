@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>企业知识库 Demo</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --panel2:#1e2230; --line:#2a3040;
+    --txt:#e6e9f0; --dim:#98a1b3; --accent:#4f8cff; --accent2:#2f6fe0;
+    --ok:#3fbf7f; --warn:#e0a83f; --err:#e05c5c; --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+       background:var(--bg);color:var(--txt);height:100vh;overflow:hidden}
+  .app{display:flex;height:100vh}
+
+  /* ---------- 左侧：知识库管理 ---------- */
+  .side{width:330px;flex:0 0 330px;background:var(--panel);border-right:1px solid var(--line);
+        display:flex;flex-direction:column}
+  .brand{padding:16px;border-bottom:1px solid var(--line)}
+  .brand h1{margin:0;font-size:16px;letter-spacing:.5px}
+  .brand .sub{margin-top:6px;font-size:12px;color:var(--dim);line-height:1.6}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;
+       background:var(--dim);vertical-align:middle}
+  .dot.ok{background:var(--ok)} .dot.bad{background:var(--err)} .dot.warn{background:var(--warn)}
+
+  .side-actions{padding:12px;display:flex;gap:8px;border-bottom:1px solid var(--line)}
+  .side-actions button{white-space:nowrap;flex:0 0 auto}
+  .side-actions button.primary{flex:1 1 auto;min-width:0}
+  button{font-family:inherit;font-size:13px;color:var(--txt);background:var(--panel2);
+         border:1px solid var(--line);padding:8px 12px;border-radius:8px;cursor:pointer;
+         transition:.15s}
+  button:hover{border-color:var(--accent);color:#fff}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.primary:hover{background:var(--accent2)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent}
+
+  .doc-list{flex:1;overflow-y:auto;padding:8px 12px 20px}
+  .doc{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;
+       font-size:13px;border:1px solid transparent}
+  .doc:hover{background:var(--panel2);border-color:var(--line)}
+  .doc .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .doc .cnt{font-size:11px;color:var(--dim);flex:0 0 auto}
+  .doc .del{opacity:0;color:var(--err);cursor:pointer;font-size:15px;line-height:1;
+            padding:0 2px;background:none;border:none}
+  .doc:hover .del{opacity:1}
+  .empty{color:var(--dim);font-size:12.5px;line-height:1.9;padding:14px 4px}
+
+  /* ---------- 右侧：问答 ---------- */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{display:flex;align-items:center;gap:14px;padding:12px 20px;
+          border-bottom:1px solid var(--line);background:var(--panel)}
+  .topbar .title{font-size:14px;font-weight:600}
+  .topbar .meta{font-size:12px;color:var(--dim);margin-left:auto}
+  select{font-family:inherit;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+         border-radius:8px;padding:7px 10px;font-size:12.5px;max-width:210px}
+
+  .chat{flex:1;overflow-y:auto;padding:22px 26px 8px}
+  .turn{margin-bottom:26px;max-width:900px}
+  .q{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+  .q .who{flex:0 0 auto;width:26px;height:26px;border-radius:7px;background:var(--accent);
+          color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .q .text{font-size:14.5px;font-weight:600;line-height:1.7;padding-top:2px}
+  .a{display:flex;gap:10px;align-items:flex-start}
+  .a .who{flex:0 0 auto;width:26px;height:26px;border-radius:7px;background:var(--panel2);
+          border:1px solid var(--line);font-size:12px;display:flex;align-items:center;
+          justify-content:center}
+  .a .body{flex:1;min-width:0}
+  .answer{font-size:14.5px;line-height:1.95;white-space:pre-wrap;word-break:break-word}
+  .answer .cite{color:var(--accent);cursor:pointer;font-weight:700;padding:0 1px}
+  .answer .cite:hover{text-decoration:underline}
+  .srcs{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+  .srcs .h{font-size:12px;color:var(--dim);margin-bottom:8px}
+  .src{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+       border-radius:8px;padding:9px 11px;margin-bottom:7px;font-size:12.5px}
+  .src .top{display:flex;gap:8px;align-items:baseline}
+  .src .idx{color:var(--accent);font-weight:700;flex:0 0 auto}
+  .src .label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim)}
+  .src .scores{font-size:11px;color:var(--dim);flex:0 0 auto}
+  .src .snip{margin-top:6px;color:#b9c1d1;line-height:1.7;display:none;white-space:pre-wrap;
+             max-height:260px;overflow:auto}
+  .src.open .snip{display:block}
+  .src .toggle{cursor:pointer;font-size:11px;color:var(--accent);margin-top:5px;display:inline-block}
+  .think{color:var(--dim);font-size:13px;font-style:italic}
+  .err{color:var(--err);font-size:13px;line-height:1.8}
+
+  .composer{border-top:1px solid var(--line);padding:14px 20px 16px;background:var(--panel)}
+  .inputrow{display:flex;gap:10px;align-items:flex-end}
+  textarea{flex:1;font-family:inherit;font-size:14px;color:var(--txt);background:var(--panel2);
+           border:1px solid var(--line);border-radius:10px;padding:11px 13px;resize:none;
+           height:52px;max-height:170px;line-height:1.6}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  .hint{font-size:11.5px;color:var(--dim);margin-top:8px}
+
+  /* ---------- 弹窗 ---------- */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;
+        justify-content:center;z-index:50}
+  .mask.show{display:flex}
+  .modal{width:520px;max-width:92vw;background:var(--panel);border:1px solid var(--line);
+         border-radius:14px;padding:22px}
+  .modal h2{margin:0 0 4px;font-size:16px}
+  .modal p.desc{margin:0 0 18px;font-size:12.5px;color:var(--dim);line-height:1.7}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:6px}
+  .field input{width:100%;font-family:inherit;font-size:13px;color:var(--txt);background:var(--panel2);
+               border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .field input:focus{outline:none;border-color:var(--accent)}
+  .field .tip{font-size:11.5px;color:var(--dim);margin-top:6px;line-height:1.6}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#2c3446;border-radius:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 左侧知识库管理 -->
+  <aside class="side">
+    <div class="brand">
+      <h1>企业知识库 Demo</h1>
+      <div class="sub">
+        <div><span id="dotModel" class="dot"></span>向量模型：<span id="modelName">检测中…</span></div>
+        <div><span id="dotRerank" class="dot"></span>重排模型：<span id="rerankName">检测中…</span></div>
+        <div><span id="dotLlm" class="dot"></span>大模型：<span id="llmName">未配置</span></div>
+        <div style="margin-top:6px">分块 <b id="statChunks">0</b> · 文档 <b id="statSources">0</b></div>
+      </div>
+    </div>
+    <div class="side-actions">
+      <button class="primary" id="btnUpload">上传文档</button>
+      <button id="btnRebuild" title="重新扫描 data/source 目录并入库">重建索引</button>
+      <input type="file" id="fileInput" multiple hidden
+             accept=".pdf,.docx,.xlsx,.xlsm,.txt,.md,.csv" />
+    </div>
+    <div class="doc-list" id="docList">
+      <div class="empty">正在加载…</div>
+    </div>
+  </aside>
+
+  <!-- 右侧问答 -->
+  <main class="main">
+    <div class="topbar">
+      <span class="title">知识库问答</span>
+      <select id="selSource" title="限定在某份文档内检索">
+        <option value="">全部文档</option>
+      </select>
+      <span class="meta" id="topMeta"></span>
+      <button class="ghost" id="btnSettings">设置</button>
+    </div>
+
+    <div class="chat" id="chat">
+      <div class="turn">
+        <div class="a">
+          <div class="who">AI</div>
+          <div class="body">
+            <div class="answer">先上传文档，再提问。系统会先在知识库里做「向量 + 关键词」混合检索，再把命中的原文片段交给大模型回答，并逐句标注来源编号。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inputrow">
+        <textarea id="q" placeholder="输入问题，例如：公司年假有多少天？（Enter 发送，Shift+Enter 换行）"></textarea>
+        <button class="primary" id="btnSend" style="height:52px;padding:0 22px">发送</button>
+      </div>
+      <div class="hint" id="hint">回答仅依据已入库文档，每句话都带来源编号，可点击查看原文。</div>
+    </div>
+  </main>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <h2>设置</h2>
+    <p class="desc">大模型用于生成最终回答。检索与向量化全部在本机完成，文档原文不会因为检索而外发。</p>
+    <div class="field">
+      <label>大模型 API Key</label>
+      <input type="password" id="inKey" placeholder="sk-..." autocomplete="off" />
+      <div class="tip">保存后写入 <code>E:\deepseek\kb\.env</code>，服务重启仍然有效。留空表示不修改。</div>
+    </div>
+    <div class="field">
+      <label>接口地址</label>
+      <input type="text" id="inBase" placeholder="https://api.deepseek.com/v1" />
+      <div class="tip">任何 OpenAI 兼容接口均可，例如通义千问、内部私有化模型网关。</div>
+    </div>
+    <div class="field">
+      <label>模型名</label>
+      <input type="text" id="inModel" placeholder="deepseek-chat" />
+    </div>
+    <div class="modal-actions">
+      <button id="btnCancel">取消</button>
+      <button class="primary" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let busy = false;
+
+/* ---------------- 工具 ---------------- */
+function esc(s){
+  return (s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function scrollBottom(){ const c = $("chat"); c.scrollTop = c.scrollHeight; }
+
+/* 把答案里的 [1] [2] 变成可点击的引用标记 */
+function renderAnswer(text, citations){
+  const valid = new Set((citations || []).map(c => String(c.index)));
+  return esc(text).replace(/\[(\d+)\]/g, (m, n) =>
+    valid.has(n) ? `<span class="cite" data-i="${n}">[${n}]</span>` : m);
+}
+
+/* ---------------- 状态刷新 ---------------- */
+async function refreshHealth(){
+  try{
+    const r = await fetch("/api/health");
+    const h = await r.json();
+    $("modelName").textContent = h.embed_model || "-";
+    $("dotModel").className = "dot " + (h.model_ready ? "ok" : (h.model_error ? "bad" : "warn"));
+    $("modelName").title = h.model_ready ? "模型已就绪" : (h.model_error || "模型加载中…");
+
+    if (!h.rerank_enabled) {
+      $("rerankName").textContent = "已关闭（精度降低）";
+      $("dotRerank").className = "dot warn";
+      $("rerankName").title = "KB_RERANK=0，仅使用余弦门槛，存在漏拦风险";
+    } else if (h.rerank_ready) {
+      $("rerankName").textContent = "已就绪（门槛 " + h.rerank_min_score + "）";
+      $("dotRerank").className = "dot ok";
+      $("rerankName").title = h.rerank_model || "";
+    } else {
+      $("rerankName").textContent = "不可用（已降级）";
+      $("dotRerank").className = "dot bad";
+      $("rerankName").title = h.rerank_error || "重排模型加载失败，已降级为余弦门槛";
+    }
+
+    $("llmName").textContent = h.llm_configured ? h.llm_model : "未配置";
+    $("dotLlm").className = "dot " + (h.llm_configured ? "ok" : "bad");
+    if (h.kb){ $("statChunks").textContent = h.kb.chunks ?? 0; $("statSources").textContent = h.kb.sources ?? 0; }
+    $("topMeta").textContent = `向量库分块 ${h.kb?.chunks ?? 0} · 运行 ${Math.round(h.uptime_seconds)}s`;
+  }catch(e){ $("topMeta").textContent = "服务连接失败"; }
+}
+
+async function refreshDocs(){
+  const r = await fetch("/api/documents");
+  const d = await r.json();
+  const list = $("docList");
+  const sel = $("selSource");
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">全部文档</option>';
+
+  if (!d.sources || d.sources.length === 0){
+    list.innerHTML = '<div class="empty">还没有文档。<br />点上方「上传文档」，支持 PDF / Word / Excel / TXT / Markdown。<br />也可以把文件直接放进 <code>E:\\deepseek\\kb\\data\\source</code>，再点「重建索引」。</div>';
+  } else {
+    list.innerHTML = d.sources.map(s => `
+      <div class="doc">
+        <span class="name" title="${esc(s.source)}">${esc(s.source)}</span>
+        <span class="cnt">${s.chunks} 块</span>
+        <button class="del" data-src="${esc(s.source)}" title="删除该文档">×</button>
+      </div>`).join("");
+    d.sources.forEach(s => {
+      const o = document.createElement("option");
+      o.value = s.source; o.textContent = s.source;
+      sel.appendChild(o);
+    });
+  }
+  sel.value = d.sources?.some(s => s.source === prev) ? prev : "";
+  if (d.stats){ $("statChunks").textContent = d.stats.chunks; $("statSources").textContent = d.stats.sources; }
+}
+
+/* ---------------- 上传 / 删除 / 重建 ---------------- */
+$("btnUpload").onclick = () => $("fileInput").click();
+
+$("fileInput").onchange = async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  const fd = new FormData();
+  files.forEach(f => fd.append("files", f));
+  $("btnUpload").disabled = true;
+  $("hint").textContent = `正在解析并向量化 ${files.length} 个文件…（首次会加载模型，稍慢）`;
+  try{
+    const r = await fetch("/api/documents/upload", {method:"POST", body:fd});
+    const d = await r.json();
+    const bad = (d.files || []).filter(f => f.status !== "ok");
+    $("hint").textContent = `入库完成：共 ${d.total_chunks} 个分块` +
+      (bad.length ? `；${bad.length} 个文件有问题：` + bad.map(b => `${b.file}(${b.message||b.status})`).join("、") : "");
+    await refreshDocs(); await refreshHealth();
+  }catch(err){
+    $("hint").textContent = "上传失败：" + err;
+  }finally{
+    $("btnUpload").disabled = false;
+    e.target.value = "";
+  }
+};
+
+$("docList").onclick = async (e) => {
+  const btn = e.target.closest(".del");
+  if (!btn) return;
+  const src = btn.dataset.src;
+  if (!confirm(`确定删除「${src}」及其索引吗？`)) return;
+  await fetch("/api/documents/" + encodeURIComponent(src), {method:"DELETE"});
+  await refreshDocs(); await refreshHealth();
+};
+
+$("btnRebuild").onclick = async () => {
+  $("btnRebuild").disabled = true;
+  $("hint").textContent = "正在重建索引…";
+  try{
+    const r = await fetch("/api/documents/rebuild", {method:"POST"});
+    const d = await r.json();
+    $("hint").textContent = `重建完成：扫描 ${d.scanned?.length ?? 0} 个文件，共 ${d.total_chunks} 个分块`;
+    await refreshDocs(); await refreshHealth();
+  }catch(err){ $("hint").textContent = "重建失败：" + err; }
+  finally{ $("btnRebuild").disabled = false; }
+};
+
+/* ---------------- 设置 ---------------- */
+$("btnSettings").onclick = async () => {
+  const s = await (await fetch("/api/settings")).json();
+  $("inBase").value = s.llm_base_url || "";
+  $("inModel").value = s.llm_model || "";
+  $("inKey").value = "";
+  $("inKey").placeholder = s.llm_configured ? "已配置（留空则不修改）" : "sk-...";
+  $("mask").classList.add("show");
+};
+$("btnCancel").onclick = () => $("mask").classList.remove("show");
+$("mask").onclick = (e) => { if (e.target === $("mask")) $("mask").classList.remove("show"); };
+$("btnSave").onclick = async () => {
+  const body = {
+    llm_base_url: $("inBase").value.trim() || null,
+    llm_model: $("inModel").value.trim() || null,
+    llm_api_key: $("inKey").value.trim() || null,
+  };
+  const r = await fetch("/api/settings", {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  $("mask").classList.remove("show");
+  $("hint").textContent = d.saved?.length ? "设置已保存：" + d.saved.join("、") : "没有需要保存的改动";
+  await refreshHealth();
+};
+
+/* ---------------- 提问（SSE 流式） ---------------- */
+function addTurn(question){
+  const turn = document.createElement("div");
+  turn.className = "turn";
+  turn.innerHTML = `
+    <div class="q"><div class="who">Q</div><div class="text">${esc(question)}</div></div>
+    <div class="a"><div class="who">AI</div><div class="body">
+      <div class="answer"></div>
+      <div class="srcs" style="display:none"></div>
+    </div></div>`;
+  $("chat").appendChild(turn);
+  scrollBottom();
+  return turn;
+}
+
+function renderSources(box, citations){
+  box.style.display = "block";
+  box.innerHTML = '<div class="h">命中原文（点击展开）</div>' + citations.map(c => {
+    const parts = [];
+    if (c.rerank !== null && c.rerank !== undefined) parts.push("重排分 " + c.rerank.toFixed(3));
+    if (c.relevance !== null && c.relevance !== undefined) parts.push("余弦 " + c.relevance.toFixed(3));
+    if (c.vector_rank) parts.push("向量#" + c.vector_rank);
+    if (c.bm25_rank) parts.push("关键词#" + c.bm25_rank);
+    return `
+    <div class="src" id="src-${c.index}">
+      <div class="top">
+        <span class="idx">[${c.index}]</span>
+        <span class="label" title="${esc(c.source)}">${esc(c.source)}</span>
+        <span class="scores">${esc(parts.join(" · "))}</span>
+      </div>
+      <div class="snip">${esc(c.text)}</div>
+      <span class="toggle">展开原文</span>
+    </div>`;
+  }).join("");
+}
+
+async function ask(){
+  const q = $("q").value.trim();
+  if (!q || busy) return;
+  busy = true; $("btnSend").disabled = true;
+  $("q").value = "";
+  const turn = addTurn(q);
+  const ansEl = turn.querySelector(".answer");
+  const srcBox = turn.querySelector(".srcs");
+  ansEl.innerHTML = '<span class="think">检索中…</span>';
+
+  let full = "", citations = [];
+  try{
+    const resp = await fetch("/api/chat", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({question:q, source: $("selSource").value || null})
+    });
+    if (!resp.ok){
+      const err = await resp.json().catch(()=>({detail:"请求失败"}));
+      ansEl.innerHTML = `<span class="err">${esc(err.detail || ("HTTP " + resp.status))}</span>`;
+      return;
+    }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true){
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const events = buf.split("\n\n");
+      buf = events.pop();
+      for (const block of events){
+        if (!block.trim()) continue;
+        let ev = "message", data = "";
+        for (const line of block.split("\n")){
+          if (line.startsWith("event:")) ev = line.slice(6).trim();
+          else if (line.startsWith("data:")) data += line.slice(5).trim();
+        }
+        let payload = {};
+        try{ payload = JSON.parse(data || "{}"); }catch(e){}
+        if (ev === "sources"){
+          citations = payload.citations || [];
+          renderSources(srcBox, citations);
+          ansEl.textContent = "";
+          scrollBottom();
+        } else if (ev === "norefs"){
+          ansEl.innerHTML = `<span class="think">${esc(payload.message || "知识库中没有找到相关内容")}</span>`;
+        } else if (ev === "delta"){
+          full += payload.text || "";
+          ansEl.innerHTML = renderAnswer(full, citations);
+          scrollBottom();
+        } else if (ev === "error"){
+          ansEl.innerHTML = `<span class="err">${esc(payload.message || "生成失败")}</span>`;
+        }
+      }
+    }
+    if (!full) ansEl.innerHTML = ansEl.innerHTML || '<span class="think">没有生成内容</span>';
+  }catch(err){
+    ansEl.innerHTML = `<span class="err">请求异常：${esc(String(err))}</span>`;
+  }finally{
+    busy = false; $("btnSend").disabled = false; $("q").focus();
+  }
+}
+
+$("btnSend").onclick = ask;
+$("q").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); ask(); }
+});
+$("q").addEventListener("input", () => {
+  $("q").style.height = "52px";
+  $("q").style.height = Math.min(170, $("q").scrollHeight) + "px";
+});
+
+/* 点击 [n] 滚动到对应原文并展开 */
+$("chat").addEventListener("click", (e) => {
+  const cite = e.target.closest(".cite");
+  if (cite){
+    const box = cite.closest(".turn").querySelector(".srcs");
+    const src = box.querySelector("#src-" + cite.dataset.i);
+    if (src){ src.classList.add("open"); src.scrollIntoView({behavior:"smooth", block:"center"}); }
+    return;
+  }
+  const tog = e.target.closest(".toggle");
+  if (tog){
+    const src = tog.closest(".src");
+    src.classList.toggle("open");
+    tog.textContent = src.classList.contains("open") ? "收起原文" : "展开原文";
+  }
+});
+
+/* ---------------- 初始化 ---------------- */
+(async function init(){
+  await refreshHealth();
+  await refreshDocs();
+  setInterval(refreshHealth, 15000);
+})();
+</script>
+</body>
+</html>

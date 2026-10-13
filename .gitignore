@@ -1,0 +1,25 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Model weights (auto-downloaded on first run, ~1.2GB)
+models/
+.cache/
+
+# Runtime artifacts
+logs/
+data/index/
+
+# Secrets and local config
+.env
+.env.local
+
+# Editors and OS files
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
